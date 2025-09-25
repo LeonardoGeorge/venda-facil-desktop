@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "concurrently \"cd venda-facil-Laravel && php artisan serve\" \"electron electron-app/main.js\"",
     "build": "electron-builder",
-    "dist": "electron-builder --win"
+    "build:win": "electron-builder --win",
+    "build:clean": "rm -rf build && npm run build:win",
+    "dist": "npm run build:win",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [
     "venda",
@@ -15,7 +18,7 @@
     "laravel",
     "electron"
   ],
-  "author": "Seu Nome",
+  "author": "Leonardo George",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^7.6.0",
@@ -23,17 +26,47 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.vendafacil.app",
+    "appId": "com.leonardogeorge.vendafacil",
     "productName": "Venda Fácil",
     "directories": {
       "output": "build"
     },
     "files": [
       "electron-app/**/*",
-      "venda-facil-Laravel/**/*"
+      "venda-facil-Laravel/**/*",
+      "!venda-facil-Laravel/node_modules",
+      "!venda-facil-Laravel/storage/logs/**/*",
+      "!venda-facil-Laravel/.env",
+      "!venda-facil-Laravel/.git",
+      "!venda-facil-Laravel/.gitignore",
+      "!venda-facil-Laravel/README.md"
+    ],
+    "extraResources": [
+      {
+        "from": "venda-facil-Laravel",
+        "to": "laravel-app",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Venda Fácil"
     }
   }
 }

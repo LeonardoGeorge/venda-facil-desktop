@@ -1,116 +1,90 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
+const isDev = !app.isPackaged;
 let mainWindow;
 let phpProcess;
 
 function createWindow() {
-    // Criar a janela principal
     mainWindow = new BrowserWindow({
         width: 1400,
         height: 900,
         webPreferences: {
             nodeIntegration: false,
-            contextIsolation: true
+            contextIsolation: true,
+            webSecurity: false
         },
+        icon: path.join(__dirname, '../assets/icon.ico'),
         show: false // Esconder até carregar
     });
 
-    // Iniciar o servidor Laravel
-    startLaravelServer();
-
-    // Quando estiver pronto, mostrar a janela
-    mainWindow.once('ready-to-show', () => {
+    if (isDev) {
+        // Modo desenvolvimento
+        mainWindow.loadURL('http://127.0.0.1:8000');
+        mainWindow.webContents.openDevTools();
         mainWindow.show();
-        mainWindow.maximize(); // Abrir maximizado
-    });
+    } else {
+        // Modo produção
+        startLaravelServer();
 
-    // Carregar o Laravel após alguns segundos
-    setTimeout(() => {
-        mainWindow.loadURL('http://localhost:8000')
-            .then(() => {
-                console.log('✅ Laravel carregado com sucesso!');
-            })
-            .catch(err => {
-                console.log('🔄 Tentando carregar novamente...');
-                mainWindow.loadURL('http://localhost:8000');
-            });
-    }, 4000);
+        // Tentar carregar após 3 segundos
+        setTimeout(() => {
+            mainWindow.loadURL('http://127.0.0.1:8000')
+                .then(() => {
+                    console.log('✅ Aplicação carregada com sucesso!');
+                    mainWindow.show();
+                })
+                .catch((error) => {
+                    console.error('❌ Erro ao carregar:', error);
+                    // Tentar novamente após 2 segundos
+                    setTimeout(() => {
+                        mainWindow.loadURL('http://127.0.0.1:8000').then(() => mainWindow.show());
+                    }, 2000);
+                });
+        }, 3000);
+    }
 }
 
 function startLaravelServer() {
-    const laravelPath = path.join(__dirname, '../venda-facil-Laravel');
+    try {
+        // Em produção, o Laravel está na mesma pasta
+        const laravelPath = path.join(process.cwd(), 'venda-facil-Laravel');
 
-    console.log('🚀 Iniciando servidor Laravel...');
+        console.log('📁 Caminho do Laravel:', laravelPath);
 
-    // Iniciar php artisan serve
-    phpProcess = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8000'], {
-        cwd: laravelPath,
-        stdio: 'pipe'
-    });
+        phpProcess = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8000'], {
+            cwd: laravelPath,
+            stdio: 'inherit'
+        });
 
-    phpProcess.stdout.on('data', (data) => {
-        console.log(`📢 Laravel: ${data}`);
-    });
+        console.log('🚀 Servidor Laravel iniciado');
 
-    phpProcess.stderr.on('data', (data) => {
-        console.error(`❌ Erro Laravel: ${data}`);
-    });
+        phpProcess.on('error', (error) => {
+            console.error('❌ Erro no processo PHP:', error);
+        });
 
-    phpProcess.on('error', (err) => {
-        console.error('💥 Erro ao iniciar servidor PHP:', err);
-    });
+    } catch (error) {
+        console.error('❌ Erro crítico ao iniciar Laravel:', error);
+    }
 }
 
-// Configurar menu simples
-function createMenu() {
-    const template = [
-        {
-            label: 'Venda Fácil',
-            submenu: [
-                {
-                    label: 'Sobre',
-                    click: () => {
-                        console.log('Sobre Venda Fácil');
-                    }
-                },
-                { type: 'separator' },
-                { role: 'quit', label: 'Sair' }
-            ]
-        }
-    ];
-
-    const menu = Menu.buildFromTemplate(template);
-    Menu.setApplicationMenu(menu);
-}
-
-// Eventos do Electron
-app.whenReady().then(() => {
-    createMenu();
-    createWindow();
-});
+// Eventos do aplicativo
+app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
-    // Parar o servidor PHP quando fechar
     if (phpProcess) {
         phpProcess.kill();
     }
+    if (process.platform !== 'darwin') app.quit();
+});
 
-    if (process.platform !== 'darwin') {
-        app.quit();
+app.on('before-quit', () => {
+    if (phpProcess) {
+        phpProcess.kill();
     }
 });
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-    }
-});
-
-app.on('before-quit', () => {
-    // Garantir que o PHP seja fechado
-    if (phpProcess) {
-        phpProcess.kill();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
