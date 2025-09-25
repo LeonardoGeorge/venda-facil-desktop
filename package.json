@@ -1,0 +1,39 @@
+{
+  "name": "venda-facil-desktop",
+  "version": "1.0.0",
+  "description": "Venda Fácil - Sistema de Vendas Desktop",
+  "main": "electron-app/main.js",
+  "scripts": {
+    "dev": "concurrently \"cd venda-facil-Laravel && php artisan serve\" \"electron electron-app/main.js\"",
+    "build": "electron-builder",
+    "dist": "electron-builder --win"
+  },
+  "keywords": [
+    "venda",
+    "facil",
+    "desktop",
+    "laravel",
+    "electron"
+  ],
+  "author": "Seu Nome",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^7.6.0",
+    "electron": "^22.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.vendafacil.app",
+    "productName": "Venda Fácil",
+    "directories": {
+      "output": "build"
+    },
+    "files": [
+      "electron-app/**/*",
+      "venda-facil-Laravel/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

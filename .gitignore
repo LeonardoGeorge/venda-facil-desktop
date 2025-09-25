@@ -1,0 +1,18 @@
+﻿# Node.js
+node_modules/
+npm-debug.log*
+
+# Laravel
+venda-facil-Laravel/storage/logs/
+venda-facil-Laravel/vendor/
+venda-facil-Laravel/.env
+venda-facil-Laravel/bootstrap/cache/
+
+# Electron
+build/
+dist/
+
+# Sistema
+.DS_Store
+Thumbs.db
+.env
