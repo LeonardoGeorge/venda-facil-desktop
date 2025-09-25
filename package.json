@@ -1,39 +1,42 @@
 {
   "name": "venda-facil-desktop",
   "version": "1.0.0",
-  "description": "Venda Fácil - Sistema de Vendas Desktop",
+  "description": "",
   "main": "electron-app/main.js",
   "scripts": {
     "dev": "concurrently \"cd venda-facil-Laravel && php artisan serve\" \"electron electron-app/main.js\"",
+    "dist": "electron-builder --win",
     "build": "electron-builder",
-    "dist": "electron-builder --win"
-  },
-  "keywords": [
-    "venda",
-    "facil",
-    "desktop",
-    "laravel",
-    "electron"
-  ],
-  "author": "Seu Nome",
-  "license": "MIT",
-  "devDependencies": {
-    "concurrently": "^7.6.0",
-    "electron": "^22.0.0",
-    "electron-builder": "^24.13.3"
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
-    "appId": "com.vendafacil.app",
+    "appId": "com.solucx.venda-facil",
     "productName": "Venda Fácil",
     "directories": {
       "output": "build"
     },
     "files": [
       "electron-app/**/*",
-      "venda-facil-Laravel/**/*"
+      "venda-facil-Laravel/**/*",
+      "!venda-facil-Laravel/storage/**/*",
+      "!venda-facil-Laravel/node_modules/**/*",
+      "!venda-facil-Laravel/vendor/**/*",
+      "!venda-facil-Laravel/.git/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
+  },
+  "devDependencies": {
+    "electron": "^22.3.27",
+    "electron-builder": "^24.13.3",
+    "concurrently": "^7.6.0"
   }
 }

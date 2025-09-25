@@ -1,116 +1,92 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const fs = require('fs');
 
+let laravelProcess;
 let mainWindow;
-let phpProcess;
 
 function createWindow() {
-    // Criar a janela principal
     mainWindow = new BrowserWindow({
-        width: 1400,
-        height: 900,
+        width: 1200,
+        height: 800,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true
-        },
-        show: false // Esconder até carregar
+        }
     });
 
-    // Iniciar o servidor Laravel
-    startLaravelServer();
+    // SEMPRE carrega do localhost:8000 (Laravel)
+    mainWindow.loadURL('http://localhost:8000');
 
-    // Quando estiver pronto, mostrar a janela
-    mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
-        mainWindow.maximize(); // Abrir maximizado
-    });
-
-    // Carregar o Laravel após alguns segundos
-    setTimeout(() => {
-        mainWindow.loadURL('http://localhost:8000')
-            .then(() => {
-                console.log('✅ Laravel carregado com sucesso!');
-            })
-            .catch(err => {
-                console.log('🔄 Tentando carregar novamente...');
-                mainWindow.loadURL('http://localhost:8000');
-            });
-    }, 4000);
+    // Em desenvolvimento, abre DevTools
+    if (process.env.NODE_ENV === 'development') {
+        mainWindow.webContents.openDevTools();
+    }
 }
 
-function startLaravelServer() {
+// Função para verificar se o PHP está disponível
+function checkPHP() {
+    return new Promise((resolve) => {
+        const phpCheck = spawn('php', ['--version']);
+
+        phpCheck.on('error', () => {
+            resolve(false);
+        });
+
+        phpCheck.on('exit', (code) => {
+            resolve(code === 0);
+        });
+    });
+}
+
+// Função para iniciar o Laravel
+function startLaravel() {
     const laravelPath = path.join(__dirname, '../venda-facil-Laravel');
 
-    console.log('🚀 Iniciando servidor Laravel...');
+    if (!fs.existsSync(path.join(laravelPath, 'artisan'))) {
+        dialog.showErrorBox('Erro', 'Laravel não encontrado!');
+        return;
+    }
 
-    // Iniciar php artisan serve
-    phpProcess = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8000'], {
+    laravelProcess = spawn('php', ['artisan', 'serve'], {
         cwd: laravelPath,
-        stdio: 'pipe'
-    });
-
-    phpProcess.stdout.on('data', (data) => {
-        console.log(`📢 Laravel: ${data}`);
-    });
-
-    phpProcess.stderr.on('data', (data) => {
-        console.error(`❌ Erro Laravel: ${data}`);
-    });
-
-    phpProcess.on('error', (err) => {
-        console.error('💥 Erro ao iniciar servidor PHP:', err);
+        stdio: 'ignore' // Não mostrar output no console
     });
 }
 
-// Configurar menu simples
-function createMenu() {
-    const template = [
-        {
-            label: 'Venda Fácil',
-            submenu: [
-                {
-                    label: 'Sobre',
-                    click: () => {
-                        console.log('Sobre Venda Fácil');
-                    }
-                },
-                { type: 'separator' },
-                { role: 'quit', label: 'Sair' }
-            ]
-        }
-    ];
+app.whenReady().then(async () => {
+    // Verifica se o PHP está instalado
+    const hasPHP = await checkPHP();
 
-    const menu = Menu.buildFromTemplate(template);
-    Menu.setApplicationMenu(menu);
-}
+    if (!hasPHP) {
+        dialog.showErrorBox(
+            'PHP Não Encontrado',
+            'PHP não está instalado ou não está no PATH do sistema.\n\n' +
+            'Por favor, instale o PHP e adicione ao PATH do Windows.'
+        );
+        app.quit();
+        return;
+    }
 
-// Eventos do Electron
-app.whenReady().then(() => {
-    createMenu();
-    createWindow();
+    // Inicia o Laravel
+    startLaravel();
+
+    // Aguarda 3 segundos para o Laravel iniciar
+    setTimeout(() => {
+        createWindow();
+    }, 3000);
 });
 
 app.on('window-all-closed', () => {
-    // Parar o servidor PHP quando fechar
-    if (phpProcess) {
-        phpProcess.kill();
+    if (laravelProcess) {
+        laravelProcess.kill();
     }
-
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
-
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-    }
+    app.quit();
 });
 
 app.on('before-quit', () => {
-    // Garantir que o PHP seja fechado
-    if (phpProcess) {
-        phpProcess.kill();
+    if (laravelProcess) {
+        laravelProcess.kill();
     }
 });
